@@ -1,6 +1,13 @@
+from typing import Callable, Optional, Sequence, Union
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from src.resources.weather_resource import router as weather_router
+
+from prometheus_fastapi_instrumentator import Instrumentator, metrics
+from prometheus_client import REGISTRY, CollectorRegistry, Counter, Histogram, Summary
+from starlette.requests import Request
+from starlette.responses import Response
+from prometheus_fastapi_instrumentator.metrics import Info
 
 
 tags_metadata = [
@@ -49,3 +56,31 @@ async def health_check():
 
 app.include_router(router)
 app.include_router(weather_router, prefix="/api")
+print("AAAAAAAAAAAAAAAAAAAAAA")
+
+# PROMETHEUS METRICS :
+instrumentator = Instrumentator(
+    should_group_status_codes=False,
+    should_ignore_untemplated=True,
+    should_respect_env_var=True,
+    should_instrument_requests_inprogress=True,
+    excluded_handlers=[".*admin.*", "/metrics"],
+    env_var_name="ENABLE_METRICS",
+    inprogress_name="inprogress",
+    inprogress_labels=True,
+    custom_labels={"service": "example-label"}
+)
+
+def http_requested_languages_total() -> Callable[[Info], None]:
+    METRIC = Counter(
+        "just_a_counter",
+        "IDK."
+    )
+
+    def counter() -> None:
+        my_count = 0
+
+    return counter
+
+# Instrument the app with default metrics and expose the metrics:
+Instrumentator().instrument(app).expose(app)
