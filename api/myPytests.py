@@ -1,4 +1,6 @@
 from datetime import datetime
+
+import httpx
 from src.models.Weather import WeatherRequest, WeatherResponse
 from src.services.weather_service import WeatherService
 from pydantic import ValidationError
@@ -31,3 +33,15 @@ def test_weather_request_city_required():
     with pytest.raises(ValidationError):
         WeatherRequest(city="")
 
+def test_current_weather_http_error_maps_to_500(client, monkeypatch):
+    async def fake_get_current_weather(city, country_code=None):
+        raise httpx.HTTPError("network down")
+
+    monkeypatch.setattr(
+        "src.resources.weather_resource.weather_service.get_current_weather",
+        fake_get_current_weather,
+    )
+
+    r = client.get("/weather/current?city=Paris")
+    assert r.status_code == 500
+    assert "connexion" in r.json()["detail"]
